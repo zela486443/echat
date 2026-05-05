@@ -1,82 +1,49 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Reaction {
-  final String id;
-  final String messageId;
-  final String userId;
-  final String emoji;
-  final DateTime createdAt;
-
-  Reaction({required this.id, required this.messageId, required this.userId, required this.emoji, required this.createdAt});
-  factory Reaction.fromJson(Map<String, dynamic> j) => Reaction(
-    id: j['id'] ?? '', messageId: j['message_id'] ?? '', userId: j['user_id'] ?? '',
-    emoji: j['emoji'] ?? '', createdAt: DateTime.tryParse(j['created_at'] ?? '') ?? DateTime.now(),
-  );
-}
-
-class ReactionGroup {
-  final String emoji;
-  final int count;
-  final bool hasReacted;
-  final List<String> userIds;
-  ReactionGroup({required this.emoji, required this.count, required this.hasReacted, required this.userIds});
-}
-
 class ReactionService {
-  static final ReactionService _instance = ReactionService._internal();
-  factory ReactionService() => _instance;
-  ReactionService._internal();
-
   final _client = Supabase.instance.client;
 
-  Future<bool> addReaction(String messageId, String emoji, String userId) async {
-    try {
-      // Check if already reacted with this emoji
-      final existing = await _client.from('message_reactions')
-          .select('id').eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji).maybeSingle();
-      if (existing != null) return false; // Already reacted
-
-      await _client.from('message_reactions').insert({
-        'message_id': messageId, 'user_id': userId, 'emoji': emoji, 'created_at': DateTime.now().toIso8601String(),
-      });
-      return true;
-    } catch (e) { debugPrint('Add reaction error: $e'); return false; }
+  /// Add or update a reaction to a message.
+  Future<void> addReaction({
+    required String messageId,
+    required String userId,
+    required String emoji,
+  }) async {
+    await _client.from('message_reactions').upsert({
+      'message_id': messageId,
+      'user_id': userId,
+      'emoji': emoji,
+      'created_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'message_id,user_id');
   }
 
-  Future<bool> removeReaction(String messageId, String emoji, String userId) async {
-    try {
-      await _client.from('message_reactions').delete().eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji);
-      return true;
-    } catch (e) { debugPrint('Remove reaction error: $e'); return false; }
+  /// Remove a reaction.
+  Future<void> removeReaction(String messageId, String userId) async {
+    await _client.from('message_reactions').delete().match({
+      'message_id': messageId,
+      'user_id': userId,
+    });
   }
 
-  Future<bool> toggleReaction(String messageId, String emoji, String userId) async {
-    final existing = await _client.from('message_reactions')
-        .select('id').eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji).maybeSingle();
-    if (existing != null) {
-      return removeReaction(messageId, emoji, userId);
-    } else {
-      return addReaction(messageId, emoji, userId);
-    }
+  /// Fetch all reactions for a specific message.
+  Future<List<Map<String, dynamic>>> getReactions(String messageId) async {
+    final res = await _client
+        .from('message_reactions')
+        .select('emoji, user_id, profiles(username, full_name)')
+        .match({'message_id': messageId});
+    return List<Map<String, dynamic>>.from(res);
   }
 
-  Future<List<Reaction>> getReactions(String messageId) async {
-    try {
-      final res = await _client.from('message_reactions').select().eq('message_id', messageId).order('created_at');
-      return (res as List).map((e) => Reaction.fromJson(e)).toList();
-    } catch (e) { debugPrint('Get reactions error: $e'); return []; }
-  }
-
-  List<ReactionGroup> groupReactions(List<Reaction> reactions, String currentUserId) {
-    final map = <String, List<Reaction>>{};
+  /// Group reactions by emoji for UI display (e.g., 👍 5, ❤️ 3).
+  Map<String, int> groupReactions(List<Map<String, dynamic>> reactions) {
+    final Map<String, int> counts = {};
     for (final r in reactions) {
-      map.putIfAbsent(r.emoji, () => []).add(r);
+      final emoji = r['emoji'] as String;
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
     }
-    return map.entries.map((e) => ReactionGroup(
-      emoji: e.key, count: e.value.length,
-      hasReacted: e.value.any((r) => r.userId == currentUserId),
-      userIds: e.value.map((r) => r.userId).toList(),
-    )).toList()..sort((a, b) => b.count.compareTo(a.count));
+    return counts;
   }
 }
+
+final reactionServiceProvider = Provider<ReactionService>((ref) => ReactionService());

@@ -1,81 +1,71 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
 
 class Reminder {
   final String id;
-  final String chatId;
-  final String messageId;
-  final String messageText;
-  final DateTime remindAt;
-  final bool fired;
+  final String title;
+  final DateTime dateTime;
+  final String? chatId;
 
-  Reminder({required this.id, required this.chatId, required this.messageId, required this.messageText, required this.remindAt, this.fired = false});
+  Reminder({required this.id, required this.title, required this.dateTime, this.chatId});
 
-  Map<String, dynamic> toJson() => {'id': id, 'chatId': chatId, 'messageId': messageId, 'messageText': messageText, 'remindAt': remindAt.toIso8601String(), 'fired': fired};
-  factory Reminder.fromJson(Map<String, dynamic> j) => Reminder(id: j['id'], chatId: j['chatId'], messageId: j['messageId'], messageText: j['messageText'], remindAt: DateTime.parse(j['remindAt']), fired: j['fired'] ?? false);
+  Map<String, dynamic> toJson() => {'id': id, 'title': title, 'dateTime': dateTime.toIso8601String(), 'chatId': chatId};
+  factory Reminder.fromJson(Map<String, dynamic> j) => Reminder(
+    id: j['id'],
+    title: j['title'],
+    dateTime: DateTime.parse(j['dateTime']),
+    chatId: j['chatId'],
+  );
 }
 
 class ReminderService {
-  static final ReminderService _instance = ReminderService._internal();
-  factory ReminderService() => _instance;
-  ReminderService._internal();
+  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
 
-  static const String _key = 'echat_reminders';
-
-  static const List<Map<String, dynamic>> REMINDER_PRESETS = [
-    {'label': 'In 15 minutes', 'minutes': 15},
-    {'label': 'In 1 hour', 'minutes': 60},
-    {'label': 'In 3 hours', 'minutes': 180},
-    {'label': 'Tomorrow morning', 'minutes': -1}, // handled specially
-    {'label': 'Custom', 'minutes': -2},
+  static const List<String> REMINDER_PRESETS = [
+    'In 30 minutes',
+    'In 1 hour',
+    'Tomorrow morning',
+    'Next Monday',
   ];
 
-  Future<Reminder> addReminder({required String chatId, required String messageId, required String messageText, required DateTime remindAt}) async {
-    final reminders = await getReminders();
-    final reminder = Reminder(id: DateTime.now().millisecondsSinceEpoch.toString(), chatId: chatId, messageId: messageId, messageText: messageText, remindAt: remindAt);
-    reminders.add(reminder);
-    await _save(reminders);
-    return reminder;
+  Future<void> init() async {
+    tz.initializeTimeZones();
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const ios = DarwinInitializationSettings();
+    await _notifications.initialize(const InitializationSettings(android: android, iOS: ios));
   }
 
-  Future<List<Reminder>> getReminders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_key);
-    if (data == null) return [];
-    final list = jsonDecode(data) as List;
-    return list.map((e) => Reminder.fromJson(e)).toList();
+  Future<void> addReminder(Reminder reminder) async {
+    final scheduleTime = tz.TZDateTime.from(reminder.dateTime, tz.local);
+    
+    // Check if time is in future
+    if (scheduleTime.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    await _notifications.zonedSchedule(
+      reminder.id.hashCode,
+      'eChats Reminder',
+      reminder.title,
+      scheduleTime,
+      const NotificationDetails(
+        android: AndroidNotificationDetails('reminders', 'Reminders', importance: Importance.max),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      payload: jsonEncode(reminder.toJson()),
+    );
   }
 
-  Future<List<Reminder>> getDueReminders() async {
-    final all = await getReminders();
-    final now = DateTime.now();
-    return all.where((r) => !r.fired && r.remindAt.isBefore(now)).toList();
+  Future<void> cancelReminder(String id) async {
+    await _notifications.cancel(id.hashCode);
   }
 
-  Future<void> removeReminder(String id) async {
-    final reminders = await getReminders();
-    reminders.removeWhere((r) => r.id == id);
-    await _save(reminders);
-  }
-
-  Future<void> markFired(String id) async {
-    final reminders = await getReminders();
-    final idx = reminders.indexWhere((r) => r.id == id);
-    if (idx >= 0) {
-      reminders[idx] = Reminder(id: reminders[idx].id, chatId: reminders[idx].chatId, messageId: reminders[idx].messageId, messageText: reminders[idx].messageText, remindAt: reminders[idx].remindAt, fired: true);
-      await _save(reminders);
-    }
-  }
-
-  Future<void> _save(List<Reminder> reminders) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(reminders.map((r) => r.toJson()).toList()));
-  }
-
-  DateTime getTomorrowMorning() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day + 1, 9, 0);
+  Future<void> cancelAll() async {
+    await _notifications.cancelAll();
   }
 }
+
+final reminderServiceProvider = Provider<ReminderService>((ref) => ReminderService());
