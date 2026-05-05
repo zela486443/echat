@@ -18,6 +18,7 @@ class Profile with _$Profile {
     @JsonKey(name: 'is_online', defaultValue: false) required bool isOnline,
     @JsonKey(name: 'last_seen') required DateTime lastSeen,
     @JsonKey(name: 'created_at') required DateTime createdAt,
+    @JsonKey(name: 'is_verified', defaultValue: false) required bool isVerified,
     @JsonKey(name: 'updated_at') required DateTime updatedAt,
   }) = _Profile;
 
@@ -36,6 +37,7 @@ class PublicProfile with _$PublicProfile {
     @JsonKey(name: 'is_active', defaultValue: true) required bool isActive,
     @JsonKey(name: 'is_online', defaultValue: false) required bool isOnline,
     @JsonKey(name: 'last_seen') required DateTime lastSeen,
+    @JsonKey(name: 'is_verified', defaultValue: false) required bool isVerified,
     @JsonKey(name: 'created_at') DateTime? createdAt,
   }) = _PublicProfile;
 

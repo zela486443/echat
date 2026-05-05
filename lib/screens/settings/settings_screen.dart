@@ -74,6 +74,20 @@ class SettingsScreen extends ConsumerWidget {
                 _buildSettingsGroup([
                   _buildRow(
                     context,
+                    icon: LucideIcons.userCheck,
+                    iconColor: Colors.blue,
+                    label: 'Account Details',
+                    onTap: () => context.push('/account-settings'),
+                  ),
+                  _buildRow(
+                    context,
+                    icon: LucideIcons.cloudUpload,
+                    iconColor: Colors.amber,
+                    label: 'Chat Backup',
+                    onTap: () => context.push('/chat-backup'),
+                  ),
+                  _buildRow(
+                    context,
                     icon: LucideIcons.atSign,
                     iconColor: Colors.purple,
                     label: 'Username',

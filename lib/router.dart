@@ -73,6 +73,10 @@ import 'screens/all_pages/wallet_qr_screen.dart';
 import 'screens/all_pages/new_channel_screen.dart';
 import 'screens/groups/group_info_screen.dart';
 import 'screens/settings/username_settings_screen.dart';
+import 'screens/all_pages/account_settings_screen.dart';
+import 'screens/all_pages/chat_backup_screen.dart';
+import 'screens/all_pages/channel_admin_screen.dart';
+import 'screens/all_pages/channel_analytics_screen.dart';
 import 'widgets/wallet_lock_gate.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -166,6 +170,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/update-profile', builder: (context, state) => const UpdateProfileScreen()),
       GoRoute(path: '/add-account', builder: (context, state) => const UpdateProfileScreen()), // Reusing update profile
       GoRoute(path: '/delete-account', builder: (context, state) => const Scaffold(body: Center(child: Text('Delete Account')))),
+      GoRoute(path: '/account-settings', builder: (context, state) => const AccountSettingsScreen()),
+      GoRoute(path: '/chat-backup', builder: (context, state) => const ChatBackupScreen()),
+      GoRoute(path: '/channel-admin/:id', builder: (context, state) => ChannelAdminScreen(channelId: state.pathParameters['id']!, channelName: (state.extra as String?) ?? 'Channel')),
+      GoRoute(path: '/channel-analytics/:id', builder: (context, state) => ChannelAnalyticsScreen(channelId: state.pathParameters['id']!)),
       GoRoute(path: '/forgot-password', builder: (context, state) => const ForgotPasswordScreen()),
       GoRoute(path: '/business-profile', builder: (context, state) => const BusinessProfileSettingsScreen()),
       GoRoute(path: '/active-call', builder: (context, state) => const ActiveCallScreen()),

@@ -66,7 +66,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with TickerProvid
   final _usernameCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
   final _avatarCtrl = TextEditingController();
-  final _birthdayCtrl = TextEditingController();
+  DateTime? _birthdayDate;
 
   // Music
   bool _musicOpen = false;
@@ -140,7 +140,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with TickerProvid
         'username': username,
         'bio': _bioCtrl.text.trim(),
         'avatar_url': _avatarCtrl.text.trim(),
-        'birthday': _birthdayCtrl.text.isNotEmpty ? _birthdayCtrl.text : null,
+        'birthday': _birthdayDate?.toIso8601String(),
       });
       if (updated != null) setState(() => _profile = updated);
       setState(() => _editOpen = false);
@@ -322,8 +322,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with TickerProvid
                 // Name + verification
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text(displayName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 6),
-                  Icon(LucideIcons.badgeCheck, color: AppTheme.primary, size: 22),
+                  if (profile?.isVerified ?? false) ...[
+                    const SizedBox(width: 6),
+                    Icon(LucideIcons.badgeCheck, color: AppTheme.primary, size: 22),
+                  ],
                 ]),
                 const SizedBox(height: 4),
                 Text('@$displayUsername', style: TextStyle(color: Colors.white.withOpacity(0.5), fontWeight: FontWeight.w500)),
@@ -669,7 +671,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with TickerProvid
               const Text('Birthday', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
             ]),
             const SizedBox(height: 6),
-            _editField('Birthday (YYYY-MM-DD)', _birthdayCtrl, '2000-01-01'),
+            GestureDetector(
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _birthdayDate ?? DateTime(2000),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime.now(),
+                  builder: (context, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primary, onPrimary: Colors.white, surface: Color(0xFF1A1030), onSurface: Colors.white)), child: child!),
+                );
+                if (d != null) setState(() => _birthdayDate = d);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), borderRadius: BorderRadius.circular(12)),
+                child: Text(
+                  _birthdayDate != null ? "${_birthdayDate!.year}-${_birthdayDate!.month.toString().padLeft(2, '0')}-${_birthdayDate!.day.toString().padLeft(2, '0')}" : 'Select your birthday',
+                  style: TextStyle(color: _birthdayDate != null ? Colors.white : Colors.white24, fontSize: 14),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
             Row(children: [
               Expanded(child: GestureDetector(onTap: () => setState(() => _editOpen = false), child: Container(height: 46, decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), borderRadius: BorderRadius.circular(14)), child: const Center(child: Text('Cancel', style: TextStyle(color: Colors.white60)))))),
