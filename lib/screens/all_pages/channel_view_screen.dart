@@ -339,6 +339,10 @@ class _ChannelViewScreenState extends ConsumerState<ChannelViewScreen> {
               ]),
             ),
             const Spacer(),
+            if (_isOwner) ...[
+              IconButton(icon: const Icon(LucideIcons.barChart2, color: Colors.white, size: 20), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChannelAnalyticsScreen(channelId: widget.channelId)))),
+              IconButton(icon: const Icon(LucideIcons.settings, color: Colors.white, size: 20), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChannelAdminScreen(channelId: widget.channelId, channelName: name)))),
+            ],
             IconButton(icon: Icon(_muted ? LucideIcons.bellOff : LucideIcons.bell, color: Colors.white, size: 20), onPressed: _toggleMute),
             PopupMenuButton<String>(
               icon: const Icon(LucideIcons.moreVertical, color: Colors.white),
@@ -353,6 +357,7 @@ class _ChannelViewScreenState extends ConsumerState<ChannelViewScreen> {
                 if (_isOwner) ...[
                   const PopupMenuDivider(),
                   _mi('edit', LucideIcons.pencil, 'Edit Channel'),
+                  _mi('analytics', LucideIcons.barChart2, 'Statistics'),
                   _mi('delete', LucideIcons.trash2, 'Delete Channel', destructive: true),
                 ],
               ],
@@ -363,6 +368,50 @@ class _ChannelViewScreenState extends ConsumerState<ChannelViewScreen> {
     );
   }
 
+  void _showComments(_ChannelPost post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(color: _kBg, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+        child: Column(children: [
+          Container(margin: const EdgeInsets.only(top: 8), width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              const Text('Comments', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(ctx)),
+            ]),
+          ),
+          Expanded(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            const Icon(LucideIcons.messageSquare, color: Colors.white12, size: 48),
+            const SizedBox(height: 12),
+            const Text('No comments yet', style: TextStyle(color: Colors.white38, fontSize: 15)),
+            const Text('Be the first to say something!', style: TextStyle(color: Colors.white24, fontSize: 12)),
+          ]))),
+          _buildCommentInput(),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildCommentInput() => Container(
+    padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+    decoration: BoxDecoration(color: _kCard, border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06)))),
+    child: Row(children: [
+      Expanded(child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(24)),
+        child: const TextField(style: TextStyle(color: Colors.white), decoration: InputDecoration(hintText: 'Add a comment...', hintStyle: TextStyle(color: Colors.white24), border: InputBorder.none)),
+      )),
+      const SizedBox(width: 8),
+      IconButton(icon: const Icon(Icons.send, color: _kP), onPressed: () {}),
+    ]),
+  );
+
   PopupMenuItem<String> _mi(String v, IconData icon, String label, {bool destructive = false}) =>
       PopupMenuItem<String>(value: v, child: Row(children: [Icon(icon, size: 15, color: destructive ? Colors.redAccent : Colors.white54), const SizedBox(width: 10), Text(label, style: TextStyle(color: destructive ? Colors.redAccent : Colors.white70, fontSize: 13))]));
 
@@ -372,6 +421,7 @@ class _ChannelViewScreenState extends ConsumerState<ChannelViewScreen> {
       case 'subscribe':  _toggleSubscribe(); break;
       case 'share':      Clipboard.setData(ClipboardData(text: 'https://echat.chat/channel/${widget.channelId}')); _snack('Link copied!'); break;
       case 'scheduled':  setState(() => _showScheduledPosts = true); break;
+      case 'analytics':  Navigator.push(context, MaterialPageRoute(builder: (_) => ChannelAnalyticsScreen(channelId: widget.channelId))); break;
       case 'edit':       _editNameCtrl.text = _channel?['name'] ?? ''; _editDescCtrl.text = _channel?['description'] ?? ''; setState(() => _showEditDialog = true); break;
       case 'delete':     _deleteChannel(); break;
     }
@@ -489,9 +539,14 @@ class _ChannelViewScreenState extends ConsumerState<ChannelViewScreen> {
               const SizedBox(width: 4),
               Text(_formatCount(post.views), style: const TextStyle(color: Colors.white24, fontSize: 11)),
               const SizedBox(width: 12),
-              const Icon(LucideIcons.messageCircle, size: 12, color: Colors.white24),
-              const SizedBox(width: 4),
-              const Text('0', style: TextStyle(color: Colors.white24, fontSize: 11)),
+              GestureDetector(
+                onTap: () => _showComments(post),
+                child: Row(children: [
+                  const Icon(LucideIcons.messageCircle, size: 12, color: Colors.white24),
+                  const SizedBox(width: 4),
+                  const Text('Comments', style: TextStyle(color: Colors.white24, fontSize: 11)),
+                ]),
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: () { Clipboard.setData(ClipboardData(text: post.content)); _snack('Copied'); },
