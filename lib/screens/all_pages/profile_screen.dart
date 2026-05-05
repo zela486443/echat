@@ -438,6 +438,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with TickerProvid
                     _infoRow('Bio', displayBio),
                     if ((profile?.birthday ?? '').isNotEmpty) _infoRow('🎂 Birthday', profile!.birthday!),
                     _infoRow('Status', _statusConfig[_myStatus]!['label'] as String, valueColor: _statusConfig[_myStatus]!['dot'] as Color),
+                    _buildDivider(),
+                    _infoRow(
+                      'Custom Theme', 
+                      'Default', 
+                      onTap: () => _showThemePicker(),
+                      valueColor: AppTheme.primary,
+                    ),
                   ],
                 ]),
 
@@ -827,4 +834,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with TickerProvid
       ),
     );
   }
+
+  void _showThemePicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1030),
+        title: const Text('Custom Accent Color', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Wrap(
+          spacing: 12, runSpacing: 12,
+          children: _highlightColors.map((c) => GestureDetector(
+            onTap: () {
+              _snack('Theme applied!');
+              Navigator.pop(ctx);
+            },
+            child: Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() => Divider(height: 1, color: Colors.white.withOpacity(0.05), indent: 16, endIndent: 16);
 }

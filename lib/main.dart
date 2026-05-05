@@ -11,6 +11,8 @@ import 'widgets/call_overlay.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/push_notification_service.dart';
 import 'widgets/offline_banner.dart';
+import 'services/smart_notif_service.dart';
+import 'providers/background_services_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,7 +89,12 @@ class _NotificationOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notification = ref.watch(backgroundNotificationProvider);
+    final backgroundNotif = ref.watch(backgroundNotificationProvider);
+    final smartNotifs = ref.watch(smartNotificationProvider);
+    
+    // Prioritize background notification if exists, else show top smart notification
+    final notification = backgroundNotif ?? (smartNotifs.isNotEmpty ? _toBackgroundModel(smartNotifs.first) : null);
+    
     if (notification == null) return const SizedBox.shrink();
 
     return Positioned(
@@ -131,6 +138,20 @@ class _NotificationOverlay extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  AppNotification _toBackgroundModel(SmartNotification sn) {
+    Color color;
+    switch (sn.priority) {
+      case NotificationPriority.urgent: color = Colors.redAccent; break;
+      case NotificationPriority.high: color = Colors.orangeAccent; break;
+      default: color = AppTheme.primary;
+    }
+    return AppNotification(
+      message: '${sn.title}: ${sn.body}',
+      color: color,
+      timestamp: sn.timestamp,
     );
   }
 }

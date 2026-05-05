@@ -13,6 +13,9 @@ import '../calls/calls_screen.dart';
 import '../etok/etok_screen.dart';
 import '../all_pages/wallet_screen.dart';
 import '../all_pages/profile_screen.dart';
+import '../../services/smart_notif_service.dart';
+
+import '../../widgets/in_app_tour_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +26,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+  bool _showTour = true;
 
   final List<Widget> _screens = [
     const ChatsScreen(),
@@ -33,32 +37,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Phase 6: Mock smart notification for verification
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        ref.read(smartNotificationProvider.notifier).addNotification(SmartNotification(
+          id: 'mock_1',
+          title: 'Echats Security',
+          body: 'A new device logged into your account.',
+          priority: NotificationPriority.high,
+        ));
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).value;
     final accent = ref.watch(themeProvider);
 
-    return Scaffold(
-      drawer: _PremiumDrawer(user: user, accent: accent),
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: _screens,
+    return InAppTourWidget(
+      onComplete: () => setState(() => _showTour = false),
+      steps: [
+        TourStep(title: 'Welcome to Echats', description: 'Experience the new native mobile app with premium features.', alignment: Alignment.center),
+        TourStep(title: 'Global Search', description: 'Find friends, channels, and bots across the entire network.', alignment: Alignment.topCenter),
+        TourStep(title: 'Smart Navigation', description: 'Easily switch between chats, calls, and the Etok video feed.', alignment: Alignment.bottomCenter),
+        TourStep(title: 'Digital Wallet', description: 'Manage your stars and transactions securely in one place.', alignment: Alignment.bottomRight),
+      ],
+      child: Scaffold(
+        drawer: _PremiumDrawer(user: user, accent: accent),
+        body: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        bottomNavigationBar: BottomNavigation(
+          currentIndex: _currentIndex,
+          onIndexChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+        ),
+        floatingActionButton: _currentIndex == 0 ? const SpeedDialFAB() : null,
       ),
-      bottomNavigationBar: BottomNavigation(
-        currentIndex: _currentIndex,
-        onIndexChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-      ),
-      floatingActionButton: _currentIndex == 0 ? const SpeedDialFAB() : null,
     );
   }
 }

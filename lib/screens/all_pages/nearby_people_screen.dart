@@ -8,6 +8,7 @@ import '../../providers/chat_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/profile.dart';
 import '../../services/supabase_service.dart';
+import '../../services/nearby_service.dart';
 
 class NearbyPeopleScreen extends ConsumerStatefulWidget {
   const NearbyPeopleScreen({super.key});
@@ -30,13 +31,30 @@ class _NearbyPeopleScreenState extends ConsumerState<NearbyPeopleScreen> {
 
   Future<void> _loadNearby() async {
     setState(() => _isLoading = true);
-    final service = ref.read(supabaseServiceProvider);
-    final people = await service.fetchNearbyProfiles();
-    if (mounted) {
-      setState(() {
-        _nearbyPeople = people;
-        _isLoading = false;
-      });
+    try {
+      // Phase 6: Using the dedicated NearbyService
+      final people = await NearbyService().findPeopleNearby();
+      if (mounted) {
+        setState(() {
+          // Mapping NearbyPerson to Profile model for UI compatibility
+          _nearbyPeople = people.map((p) => Profile(
+            id: p.id,
+            username: p.name.toLowerCase(),
+            name: p.name,
+            avatarUrl: p.avatarUrl,
+            bio: 'Exploring Echat · ${p.distance}',
+            isActive: true,
+            isOnline: true,
+            lastSeen: DateTime.now(),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            isVerified: false,
+          )).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
