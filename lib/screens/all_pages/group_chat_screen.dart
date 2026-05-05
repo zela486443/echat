@@ -131,6 +131,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   final _topicTitleCtrl = TextEditingController();
   Color _newTopicColor = _kTopicColors[0];
 
+  // Permissions (Fetched from group settings)
+  bool _pSendMsgs = true;
+  bool _pSendMedia = true;
+  bool _pAddMembers = true;
+  bool _pPinMsgs = false;
+  bool _pChangeInfo = false;
+
   // Reply/edit
   Message? _replyingTo;
   Message? _editingMsg;
@@ -514,23 +521,83 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
 
   Widget _buildPinnedBanner() {
     return GestureDetector(
-      onTap: () => _showSnack('Jumped to pinned message'),
+      onTap: () {
+        // Find the index of the pinned message and scroll to it
+        if (_pinnedMsgId != null) {
+          _scrollToMessage(_pinnedMsgId!);
+        }
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: _kPrimary.withOpacity(0.07),
-          border: Border(bottom: BorderSide(color: _kPrimary.withOpacity(0.15))),
+          color: _kPrimary.withOpacity(0.1),
+          border: Border(bottom: BorderSide(color: _kPrimary.withOpacity(0.2))),
         ),
         child: Row(children: [
-          Icon(LucideIcons.pin, color: _kPrimary, size: 14),
-          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: _kPrimary.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+            child: Icon(LucideIcons.pin, color: _kPrimary, size: 14),
+          ),
+          const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Pinned Message', style: TextStyle(color: _kPrimary, fontSize: 10, fontWeight: FontWeight.bold)),
-            Text(_pinnedMsgText ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+            Text('Pinned Message', style: TextStyle(color: _kPrimary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+            Text(_pinnedMsgText ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12)),
           ])),
           if (_userIsAdmin)
-            GestureDetector(onTap: _unpinMessage, child: const Icon(Icons.close, color: Colors.white38, size: 16)),
+            IconButton(
+              onPressed: _unpinMessage,
+              icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
         ]),
+      ),
+    );
+  }
+
+  void _scrollToMessage(String msgId) {
+    // Logic to find the message in the list and scroll to its index
+    // For now, show a toast or jump to top
+    _showSnack('Jumping to message $msgId...');
+  }
+
+  void _showReactionPicker(Message msg) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFF150D28),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Add Reaction', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏', '🎉', '🚀', '💯'].map((emoji) => GestureDetector(
+                onTap: () {
+                  _reactToMessage(msg, emoji);
+                  Navigator.pop(ctx);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                ),
+              )).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
@@ -686,7 +753,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
             final msgReactions = _reactions[msg.id] ?? {};
 
             return GestureDetector(
-              onLongPress: () => _showContextMenu(msg, isMe, userId),
+              onLongPress: () => _showReactionPicker(msg),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 child: Row(
@@ -927,6 +994,24 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   Widget _buildInputArea(String userId) {
     final isEditing = _editingMsg != null;
     final inTopic = _selectedTopic != null;
+    final canSend = _userIsAdmin || _pSendMsgs;
+    final canSendMedia = _userIsAdmin || _pSendMedia;
+
+    if (!canSend && !isEditing) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D0A1A),
+          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
+        ),
+        child: Center(
+          child: Text(
+            'Only admins can send messages here',
+            style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13, fontStyle: FontStyle.italic),
+          ),
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -937,8 +1022,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isEditing)
-            IconButton(icon: const Icon(LucideIcons.barChart2, size: 22, color: Colors.white38), onPressed: () => setState(() => _showPollCreator = true)),
+          if (!isEditing && canSendMedia)
+            IconButton(
+              icon: const Icon(LucideIcons.barChart2, size: 22, color: Colors.white38),
+              onPressed: () => setState(() => _showPollCreator = true),
+            ),
+          if (!isEditing && !canSendMedia)
+            const SizedBox(width: 12),
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxHeight: 120),

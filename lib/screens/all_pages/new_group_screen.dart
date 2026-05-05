@@ -27,6 +27,14 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
   List<Map<String, dynamic>> _contacts = [];
   bool _loadingContacts = true;
 
+  // Permissions & Privacy
+  bool _isPublic = false;
+  bool _pSendMsgs = true;
+  bool _pSendMedia = true;
+  bool _pAddMembers = true;
+  bool _pPinMsgs = false;
+  bool _pChangeInfo = false;
+
   @override
   void initState() {
     super.initState();
@@ -144,132 +152,139 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
             ]),
           ),
 
-          // Group info section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06)))),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Avatar
-              Stack(children: [
-                Container(
-                  width: 64, height: 64,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.08), border: Border.all(color: Colors.white12)),
-                  child: const Icon(LucideIcons.users, color: Colors.white38, size: 28),
-                ),
-                Positioned(
-                  bottom: 0, right: 0,
-                  child: Container(
-                    width: 26, height: 26,
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF9333EA)]), shape: BoxShape.circle, border: Border.all(color: _kBg, width: 2)),
-                    child: const Icon(LucideIcons.camera, color: Colors.white, size: 12),
-                  ),
-                ),
-              ]),
-              const SizedBox(width: 16),
-              Expanded(child: Column(children: [
-                TextField(
-                  controller: _nameCtrl,
-                  onChanged: (_) => setState(() {}),
-                  maxLength: 100,
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: 'Group name *',
-                    hintStyle: const TextStyle(color: Colors.white24),
-                    counterText: '',
-                    filled: true, fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.white12)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.white12)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kP)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _descCtrl,
-                  maxLines: 2,
-                  maxLength: 500,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Group description (optional)',
-                    hintStyle: const TextStyle(color: Colors.white24),
-                    counterText: '',
-                    filled: true, fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.white12)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.white12)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _kP)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  ),
-                ),
               ])),
             ]),
           ),
 
-          // Selected badge
-          if (_selected.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(color: _kP.withOpacity(0.07), border: Border(bottom: BorderSide(color: _kP.withOpacity(0.15)))),
-              child: Row(children: [
-                const Icon(LucideIcons.users, color: _kP, size: 14),
-                const SizedBox(width: 8),
-                Text('${_selected.length} member${_selected.length > 1 ? 's' : ''} selected', style: const TextStyle(color: _kP, fontSize: 13, fontWeight: FontWeight.w600)),
-              ]),
-            ),
-
-          // Contact list
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Align(alignment: Alignment.centerLeft, child: Text('ADD MEMBERS', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5))),
-          ),
+          // Privacy & Permissions
           Expanded(
-            child: _loadingContacts
-                ? const Center(child: CircularProgressIndicator(color: _kP))
-                : _contacts.isEmpty
-                    ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const Icon(LucideIcons.users, color: Colors.white12, size: 48),
-                        const SizedBox(height: 12),
-                        const Text('No contacts yet', style: TextStyle(color: Colors.white38, fontSize: 15)),
-                        const SizedBox(height: 4),
-                        const Text('Start chatting with people first', style: TextStyle(color: Colors.white24, fontSize: 12)),
-                      ]))
-                    : ListView.builder(
-                        itemCount: _contacts.length,
-                        itemBuilder: (_, i) {
-                          final c = _contacts[i];
-                          final id = c['id'] as String;
-                          final name = (c['name'] ?? c['username'] ?? 'User') as String;
-                          final username = c['username'] as String? ?? '';
-                          final isOnline = c['is_online'] == true;
-                          final sel = _selected.contains(id);
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildSectionHeader('PRIVACY'),
+                _buildSwitchTile(
+                  icon: LucideIcons.globe,
+                  title: 'Public Group',
+                  subtitle: 'Anyone can find and join via search',
+                  value: _isPublic,
+                  onChanged: (v) => setState(() => _isPublic = v),
+                ),
+                _buildSectionHeader('MEMBER PERMISSIONS'),
+                _buildSwitchTile(
+                  icon: LucideIcons.messageSquare,
+                  title: 'Send Messages',
+                  value: _pSendMsgs,
+                  onChanged: (v) => setState(() => _pSendMsgs = v),
+                ),
+                _buildSwitchTile(
+                  icon: LucideIcons.image,
+                  title: 'Send Media',
+                  value: _pSendMedia,
+                  onChanged: (v) => setState(() => _pSendMedia = v),
+                ),
+                _buildSwitchTile(
+                  icon: LucideIcons.userPlus,
+                  title: 'Add Members',
+                  value: _pAddMembers,
+                  onChanged: (v) => setState(() => _pAddMembers = v),
+                ),
+                _buildSwitchTile(
+                  icon: LucideIcons.pin,
+                  title: 'Pin Messages',
+                  value: _pPinMsgs,
+                  onChanged: (v) => setState(() => _pPinMsgs = v),
+                ),
+                _buildSwitchTile(
+                  icon: LucideIcons.edit3,
+                  title: 'Change Group Info',
+                  value: _pChangeInfo,
+                  onChanged: (v) => setState(() => _pChangeInfo = v),
+                ),
 
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            leading: Stack(children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: _colorFor(id),
-                                child: Text(name.isEmpty ? '?' : name[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                              ),
-                              if (isOnline) Positioned(bottom: 1, right: 1, child: Container(width: 11, height: 11, decoration: BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle, border: Border.all(color: _kBg, width: 1.5)))),
-                            ]),
-                            title: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                            subtitle: Text('@$username', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                            trailing: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: 28, height: 28,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: sel ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF9333EA)]) : null,
-                                border: Border.all(color: sel ? Colors.transparent : Colors.white24, width: 1.5),
-                              ),
-                              child: sel ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
-                            ),
-                            onTap: () => setState(() { if (sel) _selected.remove(id); else _selected.add(id); }),
-                          );
-                        },
-                      ),
+                // Selected badge
+                if (_selected.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    margin: const EdgeInsets.only(top: 16),
+                    decoration: BoxDecoration(color: _kP.withOpacity(0.07), border: Border(bottom: BorderSide(color: _kP.withOpacity(0.15)))),
+                    child: Row(children: [
+                      const Icon(LucideIcons.users, color: _kP, size: 14),
+                      const SizedBox(width: 8),
+                      Text('${_selected.length} member${_selected.length > 1 ? 's' : ''} selected', style: const TextStyle(color: _kP, fontSize: 13, fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+
+                _buildSectionHeader('ADD MEMBERS'),
+                _buildContactList(),
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      child: Text(
+        title,
+        style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({required IconData icon, required String title, String? subtitle, required bool value, required ValueChanged<bool> onChanged}) {
+    return ListTile(
+      leading: Icon(icon, color: value ? _kP : Colors.white38, size: 20),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(color: Colors.white24, fontSize: 11)) : null,
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: _kP,
+        activeTrackColor: _kP.withOpacity(0.3),
+      ),
+    );
+  }
+
+  Widget _buildContactList() {
+    if (_loadingContacts) return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: _kP)));
+    if (_contacts.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('No contacts found', style: TextStyle(color: Colors.white24))));
+
+    return Column(
+      children: _contacts.map((c) {
+        final id = c['id'] as String;
+        final name = (c['name'] ?? c['username'] ?? 'User') as String;
+        final username = c['username'] as String? ?? '';
+        final sel = _selected.contains(id);
+
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: CircleAvatar(
+            radius: 20,
+            backgroundColor: _colorFor(id),
+            child: Text(name[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          ),
+          title: Text(name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          subtitle: Text('@$username', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+          trailing: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 24, height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: sel ? const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF9333EA)]) : null,
+              border: Border.all(color: sel ? Colors.transparent : Colors.white24, width: 1.5),
+            ),
+            child: sel ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+          ),
+          onTap: () => setState(() { if (sel) _selected.remove(id); else _selected.add(id); }),
+        );
+      }).toList(),
+    );
+  }
         ],
       ),
     );
